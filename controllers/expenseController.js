@@ -6,7 +6,7 @@ import User from '../models/userModel.js';
 // @route   POST /api/expenses
 // @access  Private
 const addExpense = async (req, res) => {
-  const { groupId, description, amount, paidById, category } = req.body;
+  const { groupId, description, amount, paidById, category, participantIds: customParticipantIds } = req.body;
   const userId = req.user.id; // User adding the expense (from token)
 
   if (!groupId || !description || !amount || !paidById) {
@@ -36,29 +36,56 @@ const addExpense = async (req, res) => {
         return res.status(400).json({ message: 'Payer must be a member of the group' });
     }
 
-    // For 'equal' split, participants are all group members.
-    // A more complex app would get participants from request for custom splits.
-    const participantIds = group.members; 
+    let finalParticipantIds = [];
+    if (customParticipantIds && Array.isArray(customParticipantIds) && customParticipantIds.length > 0) {
+      // Validate that all custom participants are members of the group
+      for (const pId of customParticipantIds) {
+        if (!group.members.some(memberId => memberId.equals(pId))) {
+          return res.status(400).json({ message: `Participant with ID ${pId} is not a member of this group.` });
+        }
+        // Ensure no duplicate participant IDs if custom list is provided
+        if (!finalParticipantIds.some(fpId => fpId.equals(pId))) {
+            finalParticipantIds.push(pId);
+        }
+      }
+      if (finalParticipantIds.length === 0) { // Should not happen if customParticipantIds has length > 0 but good check
+        return res.status(400).json({ message: 'At least one participant must be selected for the expense.' });
+      }
+    } else {
+      // Default to all group members if no specific participants are provided
+      finalParticipantIds = group.members.map(memberId => memberId.toString());
+    }
+
+    if (finalParticipantIds.length === 0) {
+        return res.status(400).json({ message: 'Cannot add an expense with no participants.' });
+    }
+
 
     const newExpense = new Expense({
       groupId,
       description,
       amount: parseFloat(amount),
       paidBy: paidById, 
-      splitType: 'equal', // Default or from request for more complex splits
-      participants: participantIds, 
+      splitType: 'equal', // For now, always equal among the (selected) participants
+      participants: finalParticipantIds, 
       category: category || 'General',
       addedBy: userId,
     });
 
     const savedExpense = await newExpense.save();
-    // Populate paidBy for the response
+    // Populate fields for the response
     const populatedExpense = await Expense.findById(savedExpense._id)
                                           .populate('paidBy', 'username email avatarUrl id')
-                                          .populate('participants', 'username email avatarUrl id') // Optional: populate participants if needed by client
+                                          .populate('participants', 'username email avatarUrl id') 
                                           .populate('addedBy', 'username email avatarUrl id'); 
 
     res.status(201).json(populatedExpense.toJSON());
+
+    // TODO: Implement email notifications to participants here
+    // For each participant in finalParticipantIds (excluding paidBy user):
+    // 1. Fetch user details (especially email)
+    // 2. Calculate their share (amount / finalParticipantIds.length)
+    // 3. Send an email notification. (Requires an email service integration)
 
   } catch (error) {
     console.error('Add expense error:', error);
@@ -89,10 +116,10 @@ const getGroupExpenses = async (req, res) => {
     }
 
     const groupExpenses = await Expense.find({ groupId: groupId })
-      .populate('paidBy', 'username email avatarUrl id') // Populate only needed fields
-      .populate('addedBy', 'username email avatarUrl id') // Populate addedBy if needed
-      // .populate('participants', 'username email avatarUrl id') // Populate if needed by client
-      .sort({ createdAt: -1 }); // Sort by newest first
+      .populate('paidBy', 'username email avatarUrl id') 
+      .populate('addedBy', 'username email avatarUrl id') 
+      .populate('participants', 'username email avatarUrl id') // Populate participants for client display
+      .sort({ createdAt: -1 }); 
     
     res.json(groupExpenses.map(exp => exp.toJSON()));
 
