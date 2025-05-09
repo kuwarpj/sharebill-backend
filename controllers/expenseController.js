@@ -44,11 +44,12 @@ const addExpense = async (req, res) => {
           return res.status(400).json({ message: `Participant with ID ${pId} is not a member of this group.` });
         }
         // Ensure no duplicate participant IDs if custom list is provided
-        if (!finalParticipantIds.some(fpId => fpId.equals(pId))) {
+        // Corrected: Use string comparison as finalParticipantIds contains strings.
+        if (!finalParticipantIds.includes(pId)) {
             finalParticipantIds.push(pId);
         }
       }
-      if (finalParticipantIds.length === 0) { // Should not happen if customParticipantIds has length > 0 but good check
+      if (finalParticipantIds.length === 0) { 
         return res.status(400).json({ message: 'At least one participant must be selected for the expense.' });
       }
     } else {
@@ -81,17 +82,18 @@ const addExpense = async (req, res) => {
 
     res.status(201).json(populatedExpense.toJSON());
 
-    // TODO: Implement email notifications to participants here
-    // For each participant in finalParticipantIds (excluding paidBy user):
-    // 1. Fetch user details (especially email)
-    // 2. Calculate their share (amount / finalParticipantIds.length)
-    // 3. Send an email notification. (Requires an email service integration)
+  
 
   } catch (error) {
     console.error('Add expense error:', error);
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(val => val.message);
       return res.status(400).json({ message: messages.join(', ') });
+    }
+    // Catching TypeErrors as well as other generic server errors
+    if (error instanceof TypeError) {
+        console.error('TypeError in addExpense:', error.message, error.stack);
+        return res.status(500).json({ message: 'Server error due to a type issue. Please check inputs or contact support.' });
     }
     res.status(500).json({ message: 'Server error during expense creation' });
   }
