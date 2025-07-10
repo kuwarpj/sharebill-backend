@@ -6,9 +6,10 @@ import cors from "cors";
 import connectDB from "./config/db.js"; // Import DB connection
 import authRoutes from "./routes/authRoutes.js";
 import groupRoutes from "./routes/groupRoutes.js";
-import expenseRoutes from "./routes/expenseRoutes.js";
+import expenseRoutes from "./routes/expense.rt.js";
 import userRoutes from "./routes/userRoutes.js";
 import { protect } from "./middleware/authMiddleware.js";
+import notificationRoutes from './routes/notification.rt.js'
 
 // Connect to MongoDB
 connectDB();
@@ -32,15 +33,31 @@ app.use(express.json());
 
 
 
-// Routes
+
+
+// Routes for auth
 app.use("/auth", authRoutes);
 app.use("/api/users", protect, userRoutes);
+
+
+
 app.use("/api/groups", protect, groupRoutes);
+app.use("/api/notification", protect, notificationRoutes);
+
+
+
+//Expense
 app.use("/api/expenses", protect, expenseRoutes);
+
+
 
 app.get("/", (req, res) => {
   res.send("ShareBill API is running...");
 });
+
+
+
+
 
 
 

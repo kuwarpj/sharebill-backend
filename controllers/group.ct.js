@@ -1,6 +1,6 @@
 import Group from "../models/groupModel.js";
 import User from "../models/userModel.js";
-import GroupInvitation from "../models/groupInvitation.md.js";
+import GroupInvitation from "../models/groupInvitation.mo.js";
 import { asyncHandler } from "../utils/asyncHandler.ut.js";
 import { ApiError } from "../utils/apiError.ut.js";
 import { ApiResponse } from "../utils/apiResponse.ut.js";
@@ -87,65 +87,48 @@ const addMemberToGroup = async ({ email, groupId, invitedBy }) => {
   const normalizedEmail = email.trim().toLowerCase();
   const existingUser = await User.findOne({ email: normalizedEmail });
 
-  if (existingUser) {
-    if (!group.members.includes(existingUser._id)) {
-      group.members.push(existingUser._id);
-      await group.save();
-    }
+  // Prevent duplicate invites
+  const existingInvite = await GroupInvitation.findOne({
+    email: normalizedEmail,
+    groupId,
+    status: "pending",
+  });
 
-    await sendEmail(
-      normalizedEmail,
-      `${invitingUser.username} added you to ${group.name}`,
-      `
-  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #ffffff;">
-    <h2 style="color: #333333;">You’ve been added to a group!</h2>
-    <p>Hi there,</p>
-    <p><strong>${invitingUser.username}</strong> has added you to the group <strong>${group.name}</strong> on <strong>Splitwise App</strong>.</p>
-    
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="https://yourdomain.com/groups/${group._id}" 
-         style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-         View Group
-      </a>
-    </div>
-
-    <p>If you didn’t expect this email, you can safely ignore it.</p>
-
-    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-
-    <footer style="text-align: center; color: #888888; font-size: 12px;">
-      <p>Splitwise App • Helping friends share expenses easily</p>
-      <p>Need help? Contact us at <a href="mailto:support@yourdomain.com">support@yourdomain.com</a></p>
-    </footer>
-  </div>
-  `
-    );
-    return { status: "added", userId: existingUser._id };
-  } else {
-    const existingInvite = await GroupInvitation.findOne({
+  if (!existingInvite) {
+    await GroupInvitation.create({
       email: normalizedEmail,
       groupId,
+      invitedBy,
       status: "pending",
     });
 
-    if (!existingInvite) {
-      await GroupInvitation.create({
-        email: normalizedEmail,
-        groupId,
-        invitedBy,
-        status: "pending",
-      });
+    const actionText = existingUser
+      ? `Log in to accept the invitation`
+      : `Sign up to join the group`;
 
-      await sendEmail(
-        normalizedEmail,
-        `Join ${group.name} on Splitwise`,
-        `<p><b>${invitingUser.username}</b> invited you to join <b>${group.name}</b>.</p>
-         <p><a href="https://yourdomain.com/signup?email=${normalizedEmail}">Sign up</a> to join.</p>`
-      );
-    }
+    const actionLink = existingUser
+      ? `https://yourdomain.com/invites` // or a direct accept link
+      : `https://yourdomain.com/signup?email=${normalizedEmail}`;
 
-    return { status: "invited" };
+    await sendEmail(
+      normalizedEmail,
+      `Join ${group.name} on Splitwise`,
+      `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+        <h2>You're Invited to Join ${group.name}</h2>
+        <p><strong>${invitingUser.username}</strong> has invited you to join <strong>${group.name}</strong>.</p>
+        <div style="margin: 30px 0; text-align: center;">
+          <a href="${actionLink}" style="padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">
+            ${actionText}
+          </a>
+        </div>
+        <p>If you didn’t expect this, you can safely ignore the email.</p>
+      </div>
+      `
+    );
   }
+
+  return { status: "invited" };
 };
 
 // @desc    Get all groups for the current user
