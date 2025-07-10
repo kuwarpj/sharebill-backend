@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { signupUser, loginUser } from '../controllers/authController.js';
+import { signupUser, loginUser, sendOtpToEmail, verifyOtpAndSignup } from '../controllers/authController.js';
 
 // @route   POST /auth/signup
 // @desc    Register a new user
@@ -11,5 +11,7 @@ router.post('/signup', signupUser);
 // @desc    Authenticate user and get token
 // @access  Public
 router.post('/login', loginUser);
+router.post('/sendotp', sendOtpToEmail)
+router.post('/verify-and-signup', verifyOtpAndSignup)
 
 export default router;
