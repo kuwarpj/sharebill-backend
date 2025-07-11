@@ -37,13 +37,13 @@ export function calculateUserExpenseView(expenses, userId) {
     }
 
     // Build formatted participants
-    // const participants = exp.participants.map(p => ({
-    //   id: p._id,
-    //   username: p.username,
-    //   email: p.email,
-    //   avatarUrl: p.avatarUrl,
-    //   amount: splitMap.get(p._id.toString()) || 0,
-    // }));
+    const participants = exp.participants.map(p => ({
+      id: p._id,
+      username: p.username,
+      email: p.email,
+      avatarUrl: p.avatarUrl,
+      amount: splitMap.get(p._id.toString()) || 0,
+    }));
 
     return {
       id: exp._id,
@@ -55,7 +55,7 @@ export function calculateUserExpenseView(expenses, userId) {
         email: exp.paidBy.email,
         avatarUrl: exp.paidBy.avatarUrl,
       },
-      // participants,
+      participants,
       createdAt: exp.createdAt,
       status,
       amountInView,

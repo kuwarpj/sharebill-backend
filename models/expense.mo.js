@@ -37,6 +37,11 @@ const expenseSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    type: {
+      type: String,
+      enum: ["personal", "group"],
+      default: "group",
+    },
     participants: [
       {
         type: mongoose.Schema.Types.ObjectId,
