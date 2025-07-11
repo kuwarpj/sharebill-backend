@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import groupRoutes from "./routes/groupRoutes.js";
 import expenseRoutes from "./routes/expense.rt.js";
 import userRoutes from "./routes/userRoutes.js";
+import personalExpenseRoute from "./routes/personalExpense.rt.js";
 import { protect } from "./middleware/authMiddleware.js";
 import notificationRoutes from "./routes/notification.rt.js";
 const app = express();
@@ -32,6 +33,9 @@ app.use("/api/notification", protect, notificationRoutes);
 
 //Expense
 app.use("/api/expenses", protect, expenseRoutes);
+
+//Personal Expense
+app.use("/api/personal", protect, personalExpenseRoute);
 
 // Global error handler (optional, but good practice)
 app.use((err, req, res, next) => {
