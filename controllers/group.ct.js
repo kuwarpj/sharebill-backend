@@ -1,10 +1,9 @@
 import Group from "../models/groupModel.js";
 import User from "../models/userModel.js";
 import GroupInvitation from "../models/groupInvitation.mo.js";
-import { asyncHandler } from "../utils/asyncHandler.ut.js";
-import { ApiError } from "../utils/apiError.ut.js";
-import { ApiResponse } from "../utils/apiResponse.ut.js";
+
 import sendEmail from "../utils/sendEmail.ut.js";
+import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
 
 // @desc    Create a new group
 // @route   POST /api/groups

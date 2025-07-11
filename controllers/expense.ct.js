@@ -1,8 +1,7 @@
 import Expense from "../models/expense.mo.js";
 import Group from "../models/groupModel.js";
-import { ApiError } from "../utils/apiError.ut.js";
-import { ApiResponse } from "../utils/apiResponse.ut.js";
-import { asyncHandler } from "../utils/asyncHandler.ut.js";
+import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
+
 import { calculateUserExpenseView } from "../utils/helper.ut.js";
 
 const createExpense = asyncHandler(async (req, res) => {

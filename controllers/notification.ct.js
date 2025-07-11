@@ -1,8 +1,7 @@
 import GroupInvitation from "../models/groupInvitation.mo.js";
 import Group from "../models/groupModel.js";
-import { ApiResponse } from "../utils/apiResponse.ut.js";
-import { ApiError } from "../utils/apiError.ut.js";
-import { asyncHandler } from "../utils/asyncHandler.ut.js";
+import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
+
 
 const acceptGroupInvitation = asyncHandler(async (req, res) => {
   const userId = req.user._id;

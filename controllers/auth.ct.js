@@ -1,13 +1,11 @@
 import jwt from "jsonwebtoken";
 import Group from "../models/groupModel.js"; // Added for processing invitations
 import GroupInvitation from "../models/groupInvitation.mo.js"; // Added for processing invitations
-import { asyncHandler } from "../utils/asyncHandler.ut.js";
-import { ApiError } from "../utils/apiError.ut.js";
 import { generateOTP } from "../utils/helper.ut.js";
 import sendEmail from "../utils/sendEmail.ut.js";
-import { ApiResponse } from "../utils/apiResponse.ut.js";
 import User from "../models/userModel.js";
 import OtpVerification from "../models/verifyOtp.mo.js";
+import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
 
 // @desc    Register a new user
 // @route   POST /auth/signup
