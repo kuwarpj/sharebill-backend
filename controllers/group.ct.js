@@ -152,8 +152,8 @@ const getGroupById = async (req, res) => {
 
   try {
     const group = await Group.findById(groupId)
-      .populate("members", "username email avatarUrl id")
-      .populate("createdBy", "username email avatarUrl id");
+      .populate("members", "username  id")
+      .populate("createdBy", "username id");
 
     if (!group) {
       return res.status(404).json({ message: "Group not found" });
@@ -166,7 +166,7 @@ const getGroupById = async (req, res) => {
         .json({ message: "User not authorized to access this group" });
     }
 
-    res.json(group.toJSON());
+    res.json(new ApiResponse(200, group, "Groups Data fetched successfully"));
   } catch (error) {
     console.error("Get group by ID error:", error);
     if (error.kind === "ObjectId") {
