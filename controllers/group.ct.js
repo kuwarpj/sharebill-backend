@@ -204,10 +204,10 @@ const getRecentActivities = asyncHandler(async (req, res) => {
   const pageNumber = parseInt(page);
   const limitNumber = parseInt(limit);
 
-  // Calculate skip value for pagination
+
   const skip = (pageNumber - 1) * limitNumber;
 
-  // Get total count of documents for pagination info
+  // Get total count of documents for pagination 
   const total = await Activity.countDocuments(query);
 
   // Get paginated activities
@@ -218,7 +218,6 @@ const getRecentActivities = asyncHandler(async (req, res) => {
     .select("-__v -updatedAt")
     .lean();
 
-  // Transform activities
   const formattedActivities = activities.map((activity) => ({
     id: activity._id,
     description: activity.description,

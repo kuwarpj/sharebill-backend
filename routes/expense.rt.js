@@ -5,6 +5,7 @@ const router = express.Router();
 
 
 router.post("/add", createExpense);
+router.post("/edit/:expenseId")
 router.get('/group/:groupId', getGroupExpensesForUser);
 
 
