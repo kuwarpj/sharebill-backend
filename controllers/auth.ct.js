@@ -7,7 +7,6 @@ import User from "../models/userModel.js";
 import OtpVerification from "../models/verifyOtp.mo.js";
 import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
 
-
 const sendOtpToEmail = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
@@ -75,7 +74,8 @@ const verifyOtpAndSignup = asyncHandler(async (req, res) => {
   res.cookie("token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production", // use secure cookies in production
-    sameSite: "lax", 
+    secure: true, 
+    sameSite: "none", 
     maxAge: 24 * 60 * 60 * 1000, // 1 day
   });
 
@@ -90,7 +90,7 @@ const verifyOtpAndSignup = asyncHandler(async (req, res) => {
     );
 });
 
- const loginUser = asyncHandler(async (req, res) => {
+const loginUser = asyncHandler(async (req, res) => {
   const { email, password: inputPassword } = req.body;
 
   if (!email || !inputPassword) {
@@ -107,29 +107,26 @@ const verifyOtpAndSignup = asyncHandler(async (req, res) => {
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+     secure: true, 
+    sameSite: "none", 
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    return res
-      .status(200)
-      .json(new ApiResponse(200, user, "Login successful"));
+    return res.status(200).json(new ApiResponse(200, user, "Login successful"));
   } else {
     throw new ApiError(401, "Invalid email or password");
   }
 });
 
-
- const logoutUser = (req, res) => {
+const logoutUser = (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: true, 
+    sameSite: "none", 
   });
 
-  return res
-      .status(200)
-      .json(new ApiResponse(200, 'Logged out'));
+  return res.status(200).json(new ApiResponse(200, "Logged out"));
 };
 
-export {  loginUser, sendOtpToEmail, verifyOtpAndSignup, logoutUser };
+export { loginUser, sendOtpToEmail, verifyOtpAndSignup, logoutUser };
