@@ -1,9 +1,10 @@
 import Group from "../models/groupModel.js";
 import User from "../models/userModel.js";
 import GroupInvitation from "../models/groupInvitation.mo.js";
-
+import Expense from "../models/expense.mo.js";
 import sendEmail from "../utils/sendEmail.ut.js";
 import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
+import Activity from "../models/userActivity.mo.js";
 
 // @desc    Create a new group
 // @route   POST /api/groups
@@ -27,6 +28,16 @@ const createGroup = asyncHandler(async (req, res) => {
     members: [creatorId],
     createdBy: creatorId,
   });
+
+   // Record activity for group creation
+  await Activity.create({
+    userId: creatorId,
+    groupId: group._id,
+    groupName: group.name,
+    type: "GROUP_CREATED",
+    description: `You created group "${groupName}"`,
+    amountType: "none",
+  });
   const results = [];
 
   for (const member of members) {
@@ -42,6 +53,7 @@ const createGroup = asyncHandler(async (req, res) => {
       results.push({ email: member.email, ...result });
     }
   }
+  
 
   const populatedGroup = await Group.findById(group._id)
     .populate("members", "-password")
@@ -183,4 +195,42 @@ const getGroupById = async (req, res) => {
 // TODO: Add functions for adding/removing members (which would also use invitation logic),
 // updating group details, deleting group
 
-export { createGroup, getUserGroups, getGroupById, addMemberToGroupHandler };
+
+
+ 
+const getRecentActivities = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { groupId } = req.query;
+
+  const query = { userId };
+  if (groupId) query.groupId = groupId;
+
+  // Get all activities without pagination
+  const activities = await Activity.find(query)
+    .sort({ createdAt: -1 }) // Newest first
+    .select("-__v -updatedAt") // Exclude these fields
+    .lean(); // Convert to plain JavaScript objects
+
+  // Transform to match your mock format
+  const formattedActivities = activities.map(activity => ({
+    id: activity._id,
+    description: activity.description,
+    group: activity.groupName,
+    amount: activity.amount 
+      ? `₹${activity.amount.toFixed(2)} ${activity.amountType}` // Changed $ to ₹
+      : undefined,
+    date: activity.createdAt.toISOString().split('T')[0], // YYYY-MM-DD format
+    type: activity.type,
+    // Include any additional fields you want to expose
+  }));
+
+  return res.status(200).json(
+    new ApiResponse(
+      200, 
+      formattedActivities, // Now just the array of activities
+      "Activities fetched successfully"
+    )
+  );
+});
+
+export { createGroup, getUserGroups, getGroupById, addMemberToGroupHandler, getRecentActivities };

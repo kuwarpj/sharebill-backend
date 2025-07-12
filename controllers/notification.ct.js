@@ -1,7 +1,7 @@
 import GroupInvitation from "../models/groupInvitation.mo.js";
 import Group from "../models/groupModel.js";
+import Activity from "../models/userActivity.mo.js";
 import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
-
 
 const acceptGroupInvitation = asyncHandler(async (req, res) => {
   const userId = req.user._id;
@@ -32,6 +32,44 @@ const acceptGroupInvitation = asyncHandler(async (req, res) => {
   invite.acceptedAt = new Date();
   await invite.save();
 
+  // Get inviter details
+  const inviter = await User.findById(invite.invitedBy);
+  // Record activity for the user who accepted
+
+  const group = Group.findById(groupId)
+  await Activity.create({
+    userId,
+    groupId,
+    groupName: group.name,
+    type: "GROUP_JOINED",
+    description: `You joined group "${group.name}"`,
+    amountType: "none",
+    involvedUsers: [
+      {
+        userId: invite.invitedBy,
+        username: inviter.username,
+        amountType: "none",
+      },
+    ],
+  });
+
+  // Record activity for the inviter
+  await Activity.create({
+    userId: invite.invitedBy,
+    groupId,
+    groupName: group.name,
+    type: "INVITATION_ACCEPTED",
+    description: `${req.user.username} accepted your invitation to join group "${group.name}"`,
+    amountType: "none",
+    involvedUsers: [
+      {
+        userId,
+        username: req.user.username,
+        amountType: "none",
+      },
+    ],
+  });
+
   // ✅ Fetch and populate the group data
   const updatedGroup = await Group.findById(groupId)
     .populate("members", "-password")
@@ -48,14 +86,12 @@ const acceptGroupInvitation = asyncHandler(async (req, res) => {
     );
 });
 
-
 const getUserInvitations = asyncHandler(async (req, res) => {
   const userEmail = req.user.email;
   console.log("THis", userEmail);
   const invites = await GroupInvitation.find({
     email: userEmail,
-  })
-    .populate("groupId", "name description")
+  }).populate("groupId", "name description");
 
   console.log("invites", invites);
   return res

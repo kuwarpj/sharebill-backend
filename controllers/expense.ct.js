@@ -3,6 +3,7 @@ import Group from "../models/groupModel.js";
 import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
 
 import { calculateUserExpenseView } from "../utils/helper.ut.js";
+import { createExpenseActivity } from "../utils/userActivity.ut.js";
 
 const createExpense = asyncHandler(async (req, res) => {
   const { groupId, description, amount, paidBy, participantIds, customSplits } =
@@ -88,6 +89,8 @@ const createExpense = asyncHandler(async (req, res) => {
     participants: finalParticipants,
     splits,
   });
+
+  await createExpenseActivity(expense, userId);
 
   return res
     .status(201)
