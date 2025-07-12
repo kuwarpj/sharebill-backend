@@ -1,13 +1,12 @@
 import dotenv from "dotenv";
 dotenv.config(); // Ensure this is at the very top and called
 
-import express from "express";
 import connectDB from "./config/db.js"; // Import DB connection
 import app from "./app.js"; 
 
-// app.get("/", (req, res) => {
-//   res.send("ShareBill API is running...");
-// });
+app.get("/", (req, res) => {
+  res.send("ShareBill API is running...");
+});
 
 connectDB()
   .then(() => {
