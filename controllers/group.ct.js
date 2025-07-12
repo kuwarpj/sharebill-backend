@@ -116,8 +116,8 @@ const addMemberToGroup = async ({ email, groupId, invitedBy }) => {
       : `Sign up to join the group`;
 
     const actionLink = existingUser
-      ? `https://yourdomain.com/invites` // or a direct accept link
-      : `https://yourdomain.com/signup?email=${normalizedEmail}`;
+      ? `https://sharebill-frontend.vercel.app/login`
+      : `https://sharebill-frontend.vercel.app/signup?email=${normalizedEmail}`;
 
     await sendEmail(
       normalizedEmail,
