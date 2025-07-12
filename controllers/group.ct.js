@@ -133,27 +133,19 @@ const addMemberToGroup = async ({ email, groupId, invitedBy }) => {
 // @desc    Get all groups for the current user
 // @route   GET /api/groups
 // @access  Private
-const getUserGroups = async (req, res) => {
-  const userId = req.user.id;
 
-  try {
-    const userGroups = await Group.find({ members: userId })
-      .populate("members", "username email avatarUrl id")
-      .populate("createdBy", "username email avatarUrl id")
-      .sort({ createdAt: -1 });
+const getUserGroups = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
 
-    res.json(userGroups.map((group) => group.toJSON()));
-  } catch (error) {
-    console.error("Get user groups error:", error);
-    res
-      .status(500)
-      .json({ message: "Server error while fetching user groups" });
-  }
-};
+  const groups = await Group.find({ members: userId })
+    .populate("members", "username email avatarUrl id")
+    .populate("createdBy", "username email avatarUrl")
+    .sort({ createdAt: -1 });
 
-// @desc    Get a single group by ID
-// @route   GET /api/groups/:id
-// @access  Private (user must be a member)
+  return res
+    .status(200)
+    .json(new ApiResponse(200, groups, "Groups fetched successfully"));
+});
 const getGroupById = async (req, res) => {
   const groupId = req.params.id;
   const userId = req.user.id;

@@ -18,11 +18,12 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
-
+app.options('*', cors(corsOptions))
+console.log("CORS origin:", corsOptions.origin);
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(express.json());
-// app.use(cookieParser())
+app.use(cookieParser())
 
 // Routes for auth
 app.use("/auth", authRoutes);

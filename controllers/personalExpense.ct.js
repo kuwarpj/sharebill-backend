@@ -1,5 +1,5 @@
-import personalExpense from "../models/personalExpense.mo";
-import { ApiResponse, asyncHandler } from "../utils/api.ut";
+import personalExpense from "../models/personalExpense.mo.js";
+import { ApiResponse, asyncHandler } from "../utils/api.ut.js";
 
 const addPersonalExpesne = asyncHandler(async (req, res) => {
   const { description, amount } = req.body;

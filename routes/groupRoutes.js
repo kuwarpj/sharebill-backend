@@ -10,9 +10,9 @@ import { acceptGroupInvitation, getUserInvitations } from "../controllers/notifi
 
 
 router.get('/getallinvite', getUserInvitations)
-router.post("/", createGroup);
+router.post("/create", createGroup);
 router.post("/:groupId/add-member", addMemberToGroupHandler);
-router.get("/", getUserGroups);
+router.get("/usergroup", getUserGroups);
 router.post("/invite/accept/:groupId", acceptGroupInvitation);
 router.get("/:id", getGroupById);
 

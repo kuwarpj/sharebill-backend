@@ -1,11 +1,11 @@
 import express from 'express';
 const router = express.Router();
-import { signupUser, loginUser, sendOtpToEmail, verifyOtpAndSignup } from '../controllers/auth.ct.js';
+import {  loginUser, sendOtpToEmail, verifyOtpAndSignup } from '../controllers/auth.ct.js';
 
 // @route   POST /auth/signup
 // @desc    Register a new user
 // @access  Public
-router.post('/signup', signupUser);
+// router.post('/signup', signupUser);
 
 // @route   POST /auth/login
 // @desc    Authenticate user and get token

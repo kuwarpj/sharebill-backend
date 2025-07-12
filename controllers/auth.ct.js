@@ -11,82 +11,6 @@ import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
 // @route   POST /auth/signup
 // @access  Public
 
-const signupUser = async (req, res) => {
-  const { username, email, password } = req.body;
-
-  if (!username || !email || !password) {
-    return res.status(400).json({ message: "Please enter all fields" });
-  }
-
-  try {
-    const lowercasedEmail = email.toLowerCase();
-    const userExistsByEmail = await User.findOne({ email: lowercasedEmail });
-    if (userExistsByEmail) {
-      return res
-        .status(400)
-        .json({ message: "User already exists with this email" });
-    }
-
-    const userExistsByUsername = await User.findOne({ username });
-    if (userExistsByUsername) {
-      return res.status(400).json({ message: "Username is already taken" });
-    }
-
-    const user = await User.create({
-      username,
-      email: lowercasedEmail,
-      password,
-    });
-
-    if (user) {
-      // Process pending group invitations
-      const pendingInvitations = await GroupInvitation.find({
-        email: user.email,
-        status: "pending",
-      });
-      for (const invitation of pendingInvitations) {
-        const group = await Group.findById(invitation.groupId);
-        if (group) {
-          if (!group.members.includes(user._id)) {
-            group.members.push(user._id);
-            await group.save();
-          }
-          invitation.status = "accepted";
-          await invitation.save();
-          console.log(
-            `User ${user.email} automatically added to group ${group.name} from invitation.`
-          );
-        } else {
-          // Group might have been deleted, mark invitation as declined or remove
-          invitation.status = "declined"; // Or simply remove: await invitation.remove();
-          await invitation.save();
-          console.warn(
-            `Group ${invitation.groupId} not found for accepted invitation for ${user.email}`
-          );
-        }
-      }
-      // TODO: Send actual welcome email and notification about group additions here.
-
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "1d",
-      });
-
-      res.status(201).json({
-        token,
-        user: user.toJSON(),
-      });
-    } else {
-      res.status(400).json({ message: "Invalid user data" });
-    }
-  } catch (error) {
-    console.error("Signup error:", error);
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((val) => val.message);
-      return res.status(400).json({ message: messages.join(", ") });
-    }
-    res.status(500).json({ message: "Server error during signup" });
-  }
-};
 
 const sendOtpToEmail = asyncHandler(async (req, res) => {
   const { email } = req.body;
@@ -121,8 +45,6 @@ const sendOtpToEmail = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, null, "OTP sent successfully"));
 });
 
-
-
 const verifyOtpAndSignup = asyncHandler(async (req, res) => {
   const { email, otp, username, password } = req.body;
 
@@ -136,7 +58,11 @@ const verifyOtpAndSignup = asyncHandler(async (req, res) => {
   }
 
   const otpRecord = await OtpVerification.findOne({ email });
-  if (!otpRecord || otpRecord.otp !== otp || otpRecord.otpExpires < Date.now()) {
+  if (
+    !otpRecord ||
+    otpRecord.otp !== otp ||
+    otpRecord.otpExpires < Date.now()
+  ) {
     throw new ApiError(400, "Invalid or expired OTP");
   }
 
@@ -150,17 +76,29 @@ const verifyOtpAndSignup = asyncHandler(async (req, res) => {
     expiresIn: "1d",
   });
 
-  return res.status(201).json(
-    new ApiResponse(201, { token, user: newUser.toJSON() }, "User created successfully")
-  );
-});
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // use secure cookies in production
+    sameSite: "lax", // or "strict" depending on your case
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+  });
 
+  return res
+    .status(201)
+    .json(
+      new ApiResponse(
+        201,
+        { token, user: newUser.toJSON() },
+        "User created successfully"
+      )
+    );
+});
 
 const loginUser = async (req, res) => {
   const { email, password: inputPassword } = req.body;
 
   if (!email || !inputPassword) {
-    return res.status(400).json({ message: "Please enter all fields" });
+    throw new ApiError(400, "Please enter all fields");
   }
 
   try {
@@ -171,17 +109,25 @@ const loginUser = async (req, res) => {
         expiresIn: "1d",
       });
 
-      res.json({
-        token,
-        user: user.toJSON(),
+      // ✅ Set JWT as an HTTP-only cookie
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
       });
+
+      // ✅ Send structured ApiResponse
+      return res
+        .status(200)
+        .json(new ApiResponse(200, user , "Login successful"));
     } else {
-      res.status(401).json({ message: "Invalid email or password" });
+      throw new ApiError(401, "Invalid email or password");
     }
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ message: "Server error during login" });
+    throw new ApiError(500, "Server error during login");
   }
 };
 
-export { signupUser, loginUser, sendOtpToEmail, verifyOtpAndSignup };
+export {  loginUser, sendOtpToEmail, verifyOtpAndSignup };
