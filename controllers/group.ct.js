@@ -1,7 +1,6 @@
 import Group from "../models/groupModel.js";
 import User from "../models/userModel.js";
 import GroupInvitation from "../models/groupInvitation.mo.js";
-import Expense from "../models/expense.mo.js";
 import sendEmail from "../utils/sendEmail.ut.js";
 import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
 import Activity from "../models/userActivity.mo.js";
@@ -29,7 +28,7 @@ const createGroup = asyncHandler(async (req, res) => {
     createdBy: creatorId,
   });
 
-   // Record activity for group creation
+  // Record activity for group creation
   await Activity.create({
     userId: creatorId,
     groupId: group._id,
@@ -53,7 +52,6 @@ const createGroup = asyncHandler(async (req, res) => {
       results.push({ email: member.email, ...result });
     }
   }
-  
 
   const populatedGroup = await Group.findById(group._id)
     .populate("members", "-password")
@@ -195,42 +193,64 @@ const getGroupById = async (req, res) => {
 // TODO: Add functions for adding/removing members (which would also use invitation logic),
 // updating group details, deleting group
 
-
-
- 
 const getRecentActivities = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const { groupId } = req.query;
+  const { groupId, page = 1, limit = 10 } = req.query;
 
   const query = { userId };
   if (groupId) query.groupId = groupId;
 
-  // Get all activities without pagination
-  const activities = await Activity.find(query)
-    .sort({ createdAt: -1 }) // Newest first
-    .select("-__v -updatedAt") // Exclude these fields
-    .lean(); // Convert to plain JavaScript objects
+  // Convert page and limit to numbers
+  const pageNumber = parseInt(page);
+  const limitNumber = parseInt(limit);
 
-  // Transform to match your mock format
-  const formattedActivities = activities.map(activity => ({
+  // Calculate skip value for pagination
+  const skip = (pageNumber - 1) * limitNumber;
+
+  // Get total count of documents for pagination info
+  const total = await Activity.countDocuments(query);
+
+  // Get paginated activities
+  const activities = await Activity.find(query)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limitNumber)
+    .select("-__v -updatedAt")
+    .lean();
+
+  // Transform activities
+  const formattedActivities = activities.map((activity) => ({
     id: activity._id,
     description: activity.description,
     group: activity.groupName,
-    amount: activity.amount 
-      ? `₹${activity.amount.toFixed(2)} ${activity.amountType}` // Changed $ to ₹
+    amount: activity.amount
+      ? `₹${activity.amount.toFixed(2)} ${activity.amountType}`
       : undefined,
-    date: activity.createdAt.toISOString().split('T')[0], // YYYY-MM-DD format
+    date: activity.createdAt.toISOString().split("T")[0],
     type: activity.type,
-    // Include any additional fields you want to expose
   }));
 
   return res.status(200).json(
     new ApiResponse(
-      200, 
-      formattedActivities, // Now just the array of activities
+      200,
+      {
+        activities: formattedActivities,
+        pagination: {
+          totalItems: total,
+          totalPages: Math.ceil(total / limitNumber),
+          currentPage: pageNumber,
+          itemsPerPage: limitNumber,
+        },
+      },
       "Activities fetched successfully"
     )
   );
 });
 
-export { createGroup, getUserGroups, getGroupById, addMemberToGroupHandler, getRecentActivities };
+export {
+  createGroup,
+  getUserGroups,
+  getGroupById,
+  addMemberToGroupHandler,
+  getRecentActivities,
+};
