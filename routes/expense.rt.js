@@ -1,11 +1,11 @@
 import express from 'express';
-import { createExpense, getGroupExpensesForUser } from '../controllers/expense.ct.js';
+import { createExpense, getGroupExpensesForUser, updateExpense } from '../controllers/expense.ct.js';
 const router = express.Router();
 
 
 
 router.post("/add", createExpense);
-router.post("/edit/:expenseId")
+router.post("/edit/:expenseId", updateExpense);
 router.get('/group/:groupId', getGroupExpensesForUser);
 
 

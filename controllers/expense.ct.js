@@ -107,6 +107,8 @@ const updateExpense = asyncHandler(async (req, res) => {
     customSplits = [],
   } = req.body;
 
+  const parsedAmount = parseFloat(amount);
+
   const userId = req.user._id;
 
   // Fetch expense and group
@@ -127,7 +129,7 @@ const updateExpense = asyncHandler(async (req, res) => {
   // Validate input
   if (
     !description?.trim() ||
-    !amount ||
+    !parsedAmount ||
     !paidBy ||
     !Array.isArray(participantIds) ||
     participantIds.length === 0
@@ -148,11 +150,11 @@ const updateExpense = asyncHandler(async (req, res) => {
 
   // Generate splits
   let splits = [];
+  
   const rounded = (val) => parseFloat(val.toFixed(2));
-
   if (customSplits.length > 0) {
     const totalCustom = customSplits.reduce((sum, s) => sum + s.amount, 0);
-    if (rounded(totalCustom) !== rounded(amount)) {
+    if (rounded(totalCustom) !== rounded(parsedAmount)) {
       throw new ApiError(400, "Custom split total must match amount");
     }
 
@@ -170,9 +172,9 @@ const updateExpense = asyncHandler(async (req, res) => {
     }
   } else {
     const count = participantIds.length;
-    const share = rounded(amount / count);
+    const share = rounded(parsedAmount / count);
     const total = rounded(share * count);
-    const adjustment = rounded(amount - total);
+    const adjustment = rounded(parsedAmount - total);
 
     splits = participantIds.map((uid, index) => ({
       userId: uid,
@@ -183,7 +185,7 @@ const updateExpense = asyncHandler(async (req, res) => {
   // Update and save expense
   Object.assign(expense, {
     description: description.trim(),
-    amount: rounded(amount),
+    amount: rounded(parsedAmount),
     paidBy,
     participants: [...new Set(participantIds)],
     splits,
