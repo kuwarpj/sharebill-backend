@@ -7,10 +7,6 @@ import User from "../models/userModel.js";
 import OtpVerification from "../models/verifyOtp.mo.js";
 import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
 
-// @desc    Register a new user
-// @route   POST /auth/signup
-// @access  Public
-
 
 const sendOtpToEmail = asyncHandler(async (req, res) => {
   const { email } = req.body;
@@ -79,7 +75,7 @@ const verifyOtpAndSignup = asyncHandler(async (req, res) => {
   res.cookie("token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production", // use secure cookies in production
-    sameSite: "lax", // or "strict" depending on your case
+    sameSite: "lax", 
     maxAge: 24 * 60 * 60 * 1000, // 1 day
   });
 
@@ -94,40 +90,33 @@ const verifyOtpAndSignup = asyncHandler(async (req, res) => {
     );
 });
 
-const loginUser = async (req, res) => {
+ const loginUser = asyncHandler(async (req, res) => {
   const { email, password: inputPassword } = req.body;
 
   if (!email || !inputPassword) {
     throw new ApiError(400, "Please enter all fields");
   }
 
-  try {
-    const user = await User.findOne({ email: email.toLowerCase() });
+  const user = await User.findOne({ email: email.toLowerCase() });
 
-    if (user && (await user.matchPassword(inputPassword))) {
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "1d",
-      });
+  if (user && (await user.matchPassword(inputPassword))) {
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
 
-      // ✅ Set JWT as an HTTP-only cookie
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 24 * 60 * 60 * 1000, // 1 day
-      });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
 
-      // ✅ Send structured ApiResponse
-      return res
-        .status(200)
-        .json(new ApiResponse(200, user , "Login successful"));
-    } else {
-      throw new ApiError(401, "Invalid email or password");
-    }
-  } catch (error) {
-    console.error("Login error:", error);
-    throw new ApiError(500, "Server error during login");
+    return res
+      .status(200)
+      .json(new ApiResponse(200, user, "Login successful"));
+  } else {
+    throw new ApiError(401, "Invalid email or password");
   }
-};
+});
 
 export {  loginUser, sendOtpToEmail, verifyOtpAndSignup };
