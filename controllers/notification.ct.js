@@ -7,7 +7,6 @@ const acceptGroupInvitation = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const userEmail = req.user.email;
   const { groupId } = req.params;
-  console.log("THis", userId, userEmail, groupId);
   if (!groupId) {
     throw new ApiError(400, "Group ID is required");
   }
@@ -88,12 +87,10 @@ const acceptGroupInvitation = asyncHandler(async (req, res) => {
 
 const getUserInvitations = asyncHandler(async (req, res) => {
   const userEmail = req.user.email;
-  console.log("THis", userEmail);
   const invites = await GroupInvitation.find({
     email: userEmail,
   }).populate("groupId", "name description");
 
-  console.log("invites", invites);
   return res
     .status(200)
     .json(new ApiResponse(200, invites, "Pending group invitations fetched"));

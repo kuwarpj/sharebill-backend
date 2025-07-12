@@ -30,7 +30,7 @@ app.use("/auth", authRoutes);
 app.use("/api/users", protect, userRoutes);
 
 app.use("/api/groups", protect, groupRoutes);
-app.use("/api/notification", protect, notificationRoutes);
+app.use("/api/invite", protect, notificationRoutes);
 
 //Expense
 app.use("/api/expenses", protect, expenseRoutes);
