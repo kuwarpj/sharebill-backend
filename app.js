@@ -38,6 +38,9 @@ app.use("/api/expenses", protect, expenseRoutes);
 //Personal Expense
 app.use("/api/personal", protect, personalExpenseRoute);
 
+
+
+
 // Global error handler (optional, but good practice)
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;

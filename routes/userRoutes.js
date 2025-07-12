@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { getMe, searchUsers } from '../controllers/userController.js';
+import { getMe, getUserFinancialSummary, searchUsers } from '../controllers/userController.js';
 // The 'protect' middleware should already be applied when these routes are mounted in server.js
 
 // @route   GET /api/users/me
@@ -12,6 +12,8 @@ router.get('/me', getMe);
 // @desc    Search users by username or email
 // @access  Private
 router.get('/search', searchUsers);
+
+router.get("/userDetails", getUserFinancialSummary)
 
 
 // Example for future routes:
