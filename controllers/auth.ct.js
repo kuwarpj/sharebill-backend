@@ -119,4 +119,17 @@ const verifyOtpAndSignup = asyncHandler(async (req, res) => {
   }
 });
 
-export {  loginUser, sendOtpToEmail, verifyOtpAndSignup };
+
+ const logoutUser = (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+
+  return res
+      .status(200)
+      .json(new ApiResponse(200, 'Logged out'));
+};
+
+export {  loginUser, sendOtpToEmail, verifyOtpAndSignup, logoutUser };

@@ -35,7 +35,7 @@ const acceptGroupInvitation = asyncHandler(async (req, res) => {
   const inviter = await User.findById(invite.invitedBy);
   // Record activity for the user who accepted
 
-  const group = Group.findById(groupId)
+  const group = Group.findById(groupId);
   await Activity.create({
     userId,
     groupId,
@@ -87,13 +87,28 @@ const acceptGroupInvitation = asyncHandler(async (req, res) => {
 
 const getUserInvitations = asyncHandler(async (req, res) => {
   const userEmail = req.user.email;
+
   const invites = await GroupInvitation.find({
     email: userEmail,
-  }).populate("groupId", "name description");
+    status: { $in: ["pending", "accepted"] },
+  })
+    .populate("groupId", "name description")
+    .populate("invitedBy", "username email")
+    .lean();
+
+  const formattedInvites = invites.map((invite) => ({
+    ...invite,
+    status: invite.status === "accepted" ? "accepted" : "pending",
+  }));
 
   return res
     .status(200)
-    .json(new ApiResponse(200, invites, "Pending group invitations fetched"));
+    .json(
+      new ApiResponse(
+        200,
+        formattedInvites,
+        "Group invitations fetched successfully"
+      )
+    );
 });
-
 export { acceptGroupInvitation, getUserInvitations };

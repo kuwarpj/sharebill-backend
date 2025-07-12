@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import {  loginUser, sendOtpToEmail, verifyOtpAndSignup } from '../controllers/auth.ct.js';
+import {  loginUser, logoutUser, sendOtpToEmail, verifyOtpAndSignup } from '../controllers/auth.ct.js';
 
 // @route   POST /auth/signup
 // @desc    Register a new user
@@ -13,5 +13,6 @@ import {  loginUser, sendOtpToEmail, verifyOtpAndSignup } from '../controllers/a
 router.post('/login', loginUser);
 router.post('/sendotp', sendOtpToEmail)
 router.post('/verify-and-signup', verifyOtpAndSignup)
+router.post('/logout', logoutUser)
 
 export default router;
