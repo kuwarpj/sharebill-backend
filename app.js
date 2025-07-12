@@ -15,10 +15,8 @@ const app = express();
 const corsOptions = {
   origin: process.env.FRONTEND_URL,
   credentials: true,
-  optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions))
 console.log("CORS origin:", corsOptions.origin);
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
