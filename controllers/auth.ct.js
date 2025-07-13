@@ -74,8 +74,8 @@ const verifyOtpAndSignup = asyncHandler(async (req, res) => {
   res.cookie("token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production", // use secure cookies in production
-    secure: true, 
-    sameSite: "none", 
+    secure: true,
+    sameSite: "none",
     maxAge: 24 * 60 * 60 * 1000, // 1 day
   });
 
@@ -107,12 +107,21 @@ const loginUser = asyncHandler(async (req, res) => {
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-     secure: true, 
-    sameSite: "none", 
+      secure: true,
+      sameSite: "none",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    return res.status(200).json(new ApiResponse(200, user, "Login successful"));
+    const userData = {
+      id: user._id,
+      email: user.email,
+      username: user.username,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt,
+    };
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { ...userData, token }, "Login successful"));
   } else {
     throw new ApiError(401, "Invalid email or password");
   }
@@ -122,8 +131,8 @@ const logoutUser = (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    secure: true, 
-    sameSite: "none", 
+    secure: true,
+    sameSite: "none",
   });
 
   return res.status(200).json(new ApiResponse(200, "Logged out"));
