@@ -141,10 +141,6 @@ const addMemberToGroup = async ({ email, groupId, invitedBy }) => {
   return { status: "invited" };
 };
 
-// @desc    Get all groups for the current user
-// @route   GET /api/groups
-// @access  Private
-
 const getUserGroups = asyncHandler(async (req, res) => {
   const userId = req.user._id.toString();
 
@@ -268,10 +264,9 @@ const getRecentActivities = asyncHandler(async (req, res) => {
   const pageNumber = parseInt(page);
   const limitNumber = parseInt(limit);
 
-
   const skip = (pageNumber - 1) * limitNumber;
 
-  // Get total count of documents for pagination 
+  // Get total count of documents for pagination
   const total = await Activity.countDocuments(query);
 
   // Get paginated activities
@@ -310,10 +305,86 @@ const getRecentActivities = asyncHandler(async (req, res) => {
   );
 });
 
+// Api to get  finincial summary for a group for logged-in users perspective
+const getGroupUserBalances = asyncHandler(async (req, res) => {
+  const { groupId } = req.params;
+  const userId = req.user._id.toString();
+
+  const group = await Group.findById(groupId)
+    .populate("members", "username email avatarUrl")
+    .populate("createdBy", "username email avatarUrl")
+    .lean();
+
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
+  }
+
+  const expenses = await Expense.find({ groupId })
+    .populate("paidBy", "username email avatarUrl")
+    .lean();
+
+  const balances = {}; 
+
+  for (const member of group.members) {
+    if (member._id.toString() === userId) continue;
+
+    balances[member._id.toString()] = {
+      _id: member._id,
+      username: member.username,
+      avatarUrl: member.avatarUrl,
+      owe: 0,
+      lent: 0,
+    };
+  }
+
+  for (const expense of expenses) {
+    const paidById = expense.paidBy?._id?.toString();
+    const splits = expense.splits || [];
+
+    for (const split of splits) {
+      const splitUserId = split.userId.toString();
+
+      if (splitUserId === userId && paidById && paidById !== userId) {
+        // You owe to the payer
+        if (balances[paidById]) {
+          balances[paidById].owe += split.amount;
+        }
+      } else if (paidById === userId && splitUserId !== userId) {
+        // They owe you
+        if (balances[splitUserId]) {
+          balances[splitUserId].lent += split.amount;
+        }
+      }
+    }
+  }
+
+  const balanceSummary = Object.values(balances);
+
+  const responseData = {
+    _id: group._id,
+    name: group.name,
+    description: group.description,
+    totalMembers: group.members.length,
+    members: group.members,
+    balances: balanceSummary,
+  };
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        responseData,
+        "Group user balances fetched successfully"
+      )
+    );
+});
+
 export {
   createGroup,
   getUserGroups,
   getGroupById,
   addMemberToGroupHandler,
   getRecentActivities,
+  getGroupUserBalances,
 };

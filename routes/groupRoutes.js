@@ -6,6 +6,7 @@ import {
   getGroupById,
   addMemberToGroupHandler,
   getRecentActivities,
+  getGroupUserBalances,
 } from "../controllers/group.ct.js";
 
 
@@ -15,6 +16,7 @@ router.post("/:groupId/add-member", addMemberToGroupHandler);
 router.get("/usergroup", getUserGroups);
 router.get("/:id", getGroupById);
 router.get("/user/recent-activity", getRecentActivities);
+router.get("/user-balance/:groupId", getGroupUserBalances)
 
 
 
