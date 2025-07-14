@@ -323,7 +323,7 @@ const getGroupUserBalances = asyncHandler(async (req, res) => {
     .populate("paidBy", "username email avatarUrl")
     .lean();
 
-  const balances = {}; 
+  const balances = {};
 
   for (const member of group.members) {
     if (member._id.toString() === userId) continue;
@@ -334,6 +334,8 @@ const getGroupUserBalances = asyncHandler(async (req, res) => {
       avatarUrl: member.avatarUrl,
       owe: 0,
       lent: 0,
+      netBalance: 0,  
+      status: "settled",  
     };
   }
 
@@ -345,16 +347,29 @@ const getGroupUserBalances = asyncHandler(async (req, res) => {
       const splitUserId = split.userId.toString();
 
       if (splitUserId === userId && paidById && paidById !== userId) {
-        // You owe to the payer
         if (balances[paidById]) {
           balances[paidById].owe += split.amount;
         }
       } else if (paidById === userId && splitUserId !== userId) {
-        // They owe you
         if (balances[splitUserId]) {
           balances[splitUserId].lent += split.amount;
         }
       }
+    }
+  }
+
+  // Calculate net balances and statuses
+  for (const memberId in balances) {
+    const b = balances[memberId];
+    b.netBalance = b.owe - b.lent;
+
+    if (b.netBalance > 0) {
+      b.status = "owe";
+    } else if (b.netBalance < 0) {
+      b.status = "lent";
+      b.netBalance = Math.abs(b.netBalance);  // positive for easier frontend use
+    } else {
+      b.status = "settled";
     }
   }
 
