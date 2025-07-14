@@ -4,6 +4,7 @@ import GroupInvitation from "../models/groupInvitation.mo.js";
 import sendEmail from "../utils/sendEmail.ut.js";
 import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
 import Activity from "../models/userActivity.mo.js";
+import Expense from "../models/expense.mo.js";
 
 // @desc    Create a new group
 // @route   POST /api/groups
@@ -145,17 +146,80 @@ const addMemberToGroup = async ({ email, groupId, invitedBy }) => {
 // @access  Private
 
 const getUserGroups = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  const userId = req.user._id.toString();
 
+  // Step 1: Fetch all groups where user is a member
   const groups = await Group.find({ members: userId })
     .populate("members", "username email avatarUrl id")
     .populate("createdBy", "username email avatarUrl")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean(); // use lean() to return plain JS objects for performance
+
+  const groupIds = groups.map((g) => g._id);
+
+  // Step 2: Fetch all expenses across all groups at once
+  const allExpenses = await Expense.find({ groupId: { $in: groupIds } })
+    .populate("paidBy", "username email avatarUrl")
+    .sort({ createdAt: -1 }) // so first expense per group is latest
+    .lean();
+
+  // Step 3: Group expenses by groupId
+  const expensesByGroup = new Map();
+  for (const expense of allExpenses) {
+    const groupId = expense.groupId.toString();
+
+    if (!expensesByGroup.has(groupId)) {
+      expensesByGroup.set(groupId, []);
+    }
+    expensesByGroup.get(groupId).push(expense);
+  }
+
+  // Step 4: Enrich group with latestTransaction + totals
+  const enrichedGroups = groups.map((group) => {
+    const groupId = group._id.toString();
+    const expenses = expensesByGroup.get(groupId) || [];
+
+    let totalYouOwe = 0;
+    let totalYouLent = 0;
+    let latestExpense = expenses[0] || null; // sorted by createdAt desc
+
+    for (const expense of expenses) {
+      const userSplit = expense.splits?.find(
+        (split) => split.userId.toString() === userId
+      );
+
+      const amountPaidByUser =
+        expense.paidBy?._id?.toString() === userId ? expense.amount : 0;
+
+      if (userSplit) {
+        if (amountPaidByUser > 0) {
+          totalYouLent += amountPaidByUser - userSplit.amount;
+        } else {
+          totalYouOwe += userSplit.amount;
+        }
+      }
+    }
+
+    return {
+      ...group,
+      latestTransaction: latestExpense
+        ? {
+            description: latestExpense.description,
+            amount: latestExpense.amount,
+            paidBy: latestExpense.paidBy,
+            createdAt: latestExpense.createdAt,
+          }
+        : null,
+      youOwe: totalYouOwe,
+      youLent: totalYouLent,
+    };
+  });
 
   return res
     .status(200)
-    .json(new ApiResponse(200, groups, "Groups fetched successfully"));
+    .json(new ApiResponse(200, enrichedGroups, "Groups fetched successfully"));
 });
+
 const getGroupById = async (req, res) => {
   const groupId = req.params.id;
   const userId = req.user.id;
