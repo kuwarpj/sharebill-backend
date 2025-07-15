@@ -5,6 +5,7 @@ import sendEmail from "../utils/sendEmail.ut.js";
 import { ApiError, ApiResponse, asyncHandler } from "../utils/api.ut.js";
 import Activity from "../models/userActivity.mo.js";
 import Expense from "../models/expense.mo.js";
+import { calculateBalances } from "../utils/helper.ut.js";
 
 // @desc    Create a new group
 // @route   POST /api/groups
@@ -141,79 +142,67 @@ const addMemberToGroup = async ({ email, groupId, invitedBy }) => {
   return { status: "invited" };
 };
 
+
 const getUserGroups = asyncHandler(async (req, res) => {
   const userId = req.user._id.toString();
 
-  // Step 1: Fetch all groups where user is a member
+  // Fetch all groups where user is a member
   const groups = await Group.find({ members: userId })
     .populate("members", "username email avatarUrl id")
     .populate("createdBy", "username email avatarUrl")
     .sort({ createdAt: -1 })
-    .lean(); // use lean() to return plain JS objects for performance
+    .lean();
 
   const groupIds = groups.map((g) => g._id);
 
-  // Step 2: Fetch all expenses across all groups at once
+  // Fetch all expenses across all groups
   const allExpenses = await Expense.find({ groupId: { $in: groupIds } })
     .populate("paidBy", "username email avatarUrl")
-    .sort({ createdAt: -1 }) // so first expense per group is latest
+    .sort({ createdAt: -1 })
     .lean();
 
-  // Step 3: Group expenses by groupId
+  // Group expenses by groupId
   const expensesByGroup = new Map();
   for (const expense of allExpenses) {
     const groupId = expense.groupId.toString();
-
     if (!expensesByGroup.has(groupId)) {
       expensesByGroup.set(groupId, []);
     }
     expensesByGroup.get(groupId).push(expense);
   }
 
-  // Step 4: Enrich group with latestTransaction + totals
+  // Enrich each group with balances
   const enrichedGroups = groups.map((group) => {
     const groupId = group._id.toString();
     const expenses = expensesByGroup.get(groupId) || [];
+    const latestExpense = expenses[0] || null;
 
-    let totalYouOwe = 0;
-    let totalYouLent = 0;
-    let latestExpense = expenses[0] || null; // sorted by createdAt desc
-
-    for (const expense of expenses) {
-      const userSplit = expense.splits?.find(
-        (split) => split.userId.toString() === userId
-      );
-
-      const amountPaidByUser =
-        expense.paidBy?._id?.toString() === userId ? expense.amount : 0;
-
-      if (userSplit) {
-        if (amountPaidByUser > 0) {
-          totalYouLent += amountPaidByUser - userSplit.amount;
-        } else {
-          totalYouOwe += userSplit.amount;
-        }
-      }
-    }
+    const {
+      totalYouOwe,
+      totalYouLent,
+      netBalance
+    } = calculateBalances(userId, group, expenses);
 
     return {
       ...group,
-      latestTransaction: latestExpense
-        ? {
-            description: latestExpense.description,
-            amount: latestExpense.amount,
-            paidBy: latestExpense.paidBy,
-            createdAt: latestExpense.createdAt,
-          }
-        : null,
-      youOwe: totalYouOwe,
-      youLent: totalYouLent,
+      latestTransaction: latestExpense ? {
+        description: latestExpense.description,
+        amount: latestExpense.amount,
+        paidBy: latestExpense.paidBy,
+        createdAt: latestExpense.createdAt,
+      } : null,
+      summary: {
+        youOwe: totalYouOwe,
+        youLent: totalYouLent,
+        netOwe: netBalance < 0 ? Math.abs(netBalance) : 0,
+        netLent: netBalance > 0 ? netBalance : 0,
+      },
     };
   });
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, enrichedGroups, "Groups fetched successfully"));
+  return res.status(200).json(
+    new ApiResponse(200, enrichedGroups, "Groups fetched successfully")
+  );
 });
 
 const getGroupById = async (req, res) => {
@@ -306,6 +295,8 @@ const getRecentActivities = asyncHandler(async (req, res) => {
 });
 
 // Api to get  finincial summary for a group for logged-in users perspective
+
+
 const getGroupUserBalances = asyncHandler(async (req, res) => {
   const { groupId } = req.params;
   const userId = req.user._id.toString();
@@ -323,57 +314,12 @@ const getGroupUserBalances = asyncHandler(async (req, res) => {
     .populate("paidBy", "username email avatarUrl")
     .lean();
 
-  const balances = {};
-
-  for (const member of group.members) {
-    if (member._id.toString() === userId) continue;
-
-    balances[member._id.toString()] = {
-      _id: member._id,
-      username: member.username,
-      avatarUrl: member.avatarUrl,
-      owe: 0,
-      lent: 0,
-      netBalance: 0,  
-      status: "settled",  
-    };
-  }
-
-  for (const expense of expenses) {
-    const paidById = expense.paidBy?._id?.toString();
-    const splits = expense.splits || [];
-
-    for (const split of splits) {
-      const splitUserId = split.userId.toString();
-
-      if (splitUserId === userId && paidById && paidById !== userId) {
-        if (balances[paidById]) {
-          balances[paidById].owe += split.amount;
-        }
-      } else if (paidById === userId && splitUserId !== userId) {
-        if (balances[splitUserId]) {
-          balances[splitUserId].lent += split.amount;
-        }
-      }
-    }
-  }
-
-  // Calculate net balances and statuses
-  for (const memberId in balances) {
-    const b = balances[memberId];
-    b.netBalance = b.owe - b.lent;
-
-    if (b.netBalance > 0) {
-      b.status = "owe";
-    } else if (b.netBalance < 0) {
-      b.status = "lent";
-      b.netBalance = Math.abs(b.netBalance);  // positive for easier frontend use
-    } else {
-      b.status = "settled";
-    }
-  }
-
-  const balanceSummary = Object.values(balances);
+  const {
+    individualBalances,
+    totalYouOwe,
+    totalYouLent,
+    netBalance
+  } = calculateBalances(userId, group, expenses);
 
   const responseData = {
     _id: group._id,
@@ -381,18 +327,18 @@ const getGroupUserBalances = asyncHandler(async (req, res) => {
     description: group.description,
     totalMembers: group.members.length,
     members: group.members,
-    balances: balanceSummary,
+    balances: individualBalances,
+    summary: {
+      youOwe: totalYouOwe,
+      youLent: totalYouLent,
+      netOwe: netBalance < 0 ? Math.abs(netBalance) : 0,
+      netLent: netBalance > 0 ? netBalance : 0,
+    }
   };
 
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        responseData,
-        "Group user balances fetched successfully"
-      )
-    );
+  return res.status(200).json(
+    new ApiResponse(200, responseData, "Group user balances fetched successfully")
+  );
 });
 
 export {

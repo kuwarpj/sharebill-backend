@@ -62,3 +62,70 @@ export function calculateUserExpenseView(expenses, userId) {
     };
   });
 }
+
+
+
+export const calculateBalances = (userId, group, expenses) => {
+  const balances = {};
+  let totalYouOwe = 0;
+  let totalYouLent = 0;
+
+  // Initialize balances for all members except yourself
+  for (const member of group.members) {
+    if (member._id.toString() === userId) continue;
+
+    balances[member._id.toString()] = {
+      _id: member._id,
+      username: member.username,
+      avatarUrl: member.avatarUrl,
+      owe: 0,
+      lent: 0,
+      netBalance: 0,
+      status: "settled",
+    };
+  }
+
+  // Process all expenses
+  for (const expense of expenses) {
+    const paidById = expense.paidBy?._id?.toString();
+    const splits = expense.splits || [];
+
+    for (const split of splits) {
+      const splitUserId = split.userId.toString();
+
+      if (splitUserId === userId && paidById && paidById !== userId) {
+        if (balances[paidById]) {
+          balances[paidById].owe += split.amount;
+          totalYouOwe += split.amount;
+        }
+      } else if (paidById === userId && splitUserId !== userId) {
+        if (balances[splitUserId]) {
+          balances[splitUserId].lent += split.amount;
+          totalYouLent += split.amount;
+        }
+      }
+    }
+  }
+
+  // Calculate net balances and statuses
+  for (const memberId in balances) {
+    const b = balances[memberId];
+    b.netBalance = b.owe - b.lent;
+
+    if (b.netBalance > 0) {
+      b.status = "owe";
+    } else if (b.netBalance < 0) {
+      b.status = "lent";
+      b.netBalance = Math.abs(b.netBalance);
+    } else {
+      b.status = "settled";
+    }
+  }
+
+  return {
+    individualBalances: Object.values(balances),
+    totalYouOwe,
+    totalYouLent,
+    netBalance: totalYouOwe - totalYouLent,
+  };
+};
