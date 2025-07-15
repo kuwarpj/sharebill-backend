@@ -194,8 +194,8 @@ const getUserGroups = asyncHandler(async (req, res) => {
       summary: {
         youOwe: totalYouOwe,
         youLent: totalYouLent,
-        netOwe: netBalance < 0 ? Math.abs(netBalance) : 0,
-        netLent: netBalance > 0 ? netBalance : 0,
+        netOwe:  netBalance > 0 ? netBalance : 0,
+        netLent: netBalance < 0 ? Math.abs(netBalance) : 0,
       },
     };
   });
